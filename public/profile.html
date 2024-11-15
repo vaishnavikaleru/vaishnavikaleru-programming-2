@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+
+        .profile-section, .applications-section {
+            margin-bottom: 30px;
+        }
+
+        .profile-section div, .applications-section div {
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        table th {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .action-buttons button {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>User Profile</h1>
+    </header>
+    <main>
+        <!-- Profile Details -->
+        <section class="profile-section">
+            <h2>Profile Details</h2>
+            <div><strong>Name:</strong> <span id="user-name"></span></div>
+            <div><strong>Email:</strong> <span id="user-email"></span></div>
+            <div><strong>Contact Info:</strong> <span id="user-contact"></span></div>
+            <div><strong>Qualification:</strong> <span id="user-qualification"></span></div>
+            <div><strong>Age:</strong> <span id="user-age"></span></div>
+            <div><strong>Gender:</strong> <span id="user-gender"></span></div>
+            <button onclick="editProfile()">Edit Profile</button>
+            <button onclick="viewNotifications()">View Notifications</button>
+        </section>
+
+        <!-- Volunteer Applications -->
+        <section class="applications-section">
+            <h2>Volunteer Applications</h2>
+            <table id="applications-table">
+                <thead>
+                    <tr>
+                        <th>Organization</th>
+                        <th>Position</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Applications will be populated here -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <script>
+        // Retrieve the token from localStorage
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        // Utility for making authenticated API requests
+        async function fetchWithAuth(url, options = {}) {
+            const token = getToken();
+            if (!token) {
+                alert('You need to log in first.');
+                window.location.href = 'login.html';
+                return;
+            }
+            options.headers = {
+                ...options.headers,
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            };
+            const response = await fetch(url, options);
+            if (response.status === 401 || response.status === 403) {
+                alert('Session expired. Please log in again.');
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+                return;
+            }
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || response.statusText);
+            }
+            return response.json();
+        }
+
+        // Load user details
+        async function loadProfile() {
+            try {
+                const profile = await fetchWithAuth('/profile');
+                document.getElementById('user-name').textContent = profile.name || 'N/A';
+                document.getElementById('user-email').textContent = profile.email || 'N/A';
+                document.getElementById('user-contact').textContent = profile.contact_info || 'N/A';
+                document.getElementById('user-qualification').textContent = profile.qualification || 'N/A';
+                document.getElementById('user-age').textContent = profile.age || 'N/A';
+                document.getElementById('user-gender').textContent = profile.gender || 'N/A';
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                alert('Could not load profile details. Please try again later.');
+            }
+        }
+
+        // Load volunteer applications
+        async function loadApplications() {
+            try {
+                const applications = await fetchWithAuth('/user/applications');
+                const tableBody = document.querySelector('#applications-table tbody');
+                tableBody.innerHTML = ''; // Clear previous data
+                applications.forEach(application => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${application.organization_name}</td>
+                        <td>${application.position_title}</td>
+                        <td>${application.status}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading applications:', error);
+                alert('Could not load applications. Please try again later.');
+            }
+        }
+
+        // Edit profile
+        function editProfile() {
+            window.location.href = 'edit_profile.html'; // Redirect to edit profile page
+        }
+
+        // View notifications
+        function viewNotifications() {
+            window.location.href = 'notifications.html'; // Redirect to notifications page
+        }
+
+        // Load profile and applications on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProfile();
+            loadApplications();
+        });
+    </script>
+</body>
+</html>

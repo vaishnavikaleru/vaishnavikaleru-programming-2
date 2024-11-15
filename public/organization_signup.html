@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Sign Up</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Organization Sign Up</h1>
+    </header>
+    <main>
+        <form id="organization-signup-form" enctype="multipart/form-data">
+            <label>Organization Name: <input type="text" name="name" required></label>
+            <label>Email: <input type="email" name="email" required></label>
+            <label>Password: <input type="password" name="password" required></label>
+            <label>Contact Info: <input type="text" name="contact_info" required></label>
+            <label>Location: <input type="text" name="location" required></label>
+            <label>Description: <textarea name="description" required></textarea></label>
+            <label>Logo: <input type="file" name="logo" accept="image/*" required></label>
+            <button type="submit">Sign Up</button>
+        </form>
+    </main>
+    <script src="script.js"></script>
+    <script>
+        document.getElementById('organization-signup-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+
+            const response = await fetch('/organization/signup', {
+                method: 'POST',
+                body: formData, // Send the formData object, including the file
+            });
+
+            const result = await response.json();
+            if (result.message) {
+                alert(result.message);
+                window.location.href = 'login.html'; // Redirect to login page after successful sign-up
+            } else {
+                alert('Error: ' + (result.error || 'Something went wrong'));
+            }
+        });
+    </script>
+</body>
+</html>

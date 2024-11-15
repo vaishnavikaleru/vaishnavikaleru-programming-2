@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>User Dashboard</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="profile.html">Profile</a>
+            <a href="login.html" onclick="logout()">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <h2>My Volunteer Applications</h2>
+            <table id="applications-table">
+                <thead>
+                    <tr>
+                        <th>Organization</th>
+                        <th>Position</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamically populated -->
+                </tbody>
+            </table>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script>
+        async function loadApplications() {
+            const response = await fetchWithAuth('/user/applications');
+            const applications = await response.json();
+            const tableBody = document.querySelector('#applications-table tbody');
+            tableBody.innerHTML = '';
+            applications.forEach(app => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${app.organization_name}</td>
+                    <td>${app.position_title}</td>
+                    <td>${app.status}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        loadApplications();
+    </script>
+</body>
+</html>

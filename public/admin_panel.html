@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Admin Panel</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="login.html" onclick="logout()">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <section>
+            <h2>Manage Users</h2>
+            <table id="users-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+        <section>
+            <h2>Manage Organizations</h2>
+            <table id="organizations-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </main>
+    <script src="script.js"></script>
+    <script>
+        async function loadUsers() {
+            const response = await fetchWithAuth('/admin/users');
+            const users = await response.json();
+            const tableBody = document.querySelector('#users-table tbody');
+            tableBody.innerHTML = '';
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>
+                        <button onclick="deleteUser(${user.id})">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        async function loadOrganizations() {
+            const response = await fetchWithAuth('/admin/organizations');
+            const organizations = await response.json();
+            const tableBody = document.querySelector('#organizations-table tbody');
+            tableBody.innerHTML = '';
+            organizations.forEach(org => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${org.name}</td>
+                    <td>${org.email}</td>
+                    <td>
+                        <button onclick="deleteOrganization(${org.id})">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        loadUsers();
+        loadOrganizations();
+    </script>
+</body>
+</html>

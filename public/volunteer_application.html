@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Application</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Volunteer Application</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="user_dashboard.html">Dashboard</a>
+        </nav>
+    </header>
+    <main>
+        <section id="organization-details">
+            <!-- Organization and position details will be dynamically loaded -->
+        </section>
+        <form id="application-form">
+            <h2>Apply for This Position</h2>
+            <label for="name">Your Name:</label>
+            <input type="text" id="name" name="name" required><br>
+
+            <label for="email">Your Email:</label>
+            <input type="email" id="email" name="email" required><br>
+
+            <label for="contact">Contact Info:</label>
+            <input type="text" id="contact" name="contact" required><br>
+
+            <label for="reason">Why do you want to volunteer?</label>
+            <textarea id="reason" name="reason" rows="4" required></textarea><br>
+
+            <label for="documents">Upload Documents (Optional):</label>
+            <input type="file" id="documents" name="documents" multiple><br>
+
+            <button type="submit">Submit Application</button>
+        </form>
+    </main>
+    <script>
+        async function loadPositionDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orgId = urlParams.get('id');
+
+            if (!orgId) {
+                alert('Invalid position ID.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/organizations/${orgId}/positions`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to load position details.');
+                }
+
+                const data = await response.json();
+
+                const detailsSection = document.getElementById('organization-details');
+                detailsSection.innerHTML = `
+                    <h2>${data.organization.name}</h2>
+                    <p><strong>Position:</strong> ${data.position.title}</p>
+                    <p><strong>Description:</strong> ${data.position.description}</p>
+                    <p><strong>Requirements:</strong> ${data.position.requirements}</p>
+                    <p><strong>Location:</strong> ${data.position.location}</p>
+                    <p><strong>Deadline:</strong> ${data.position.deadline}</p>
+                `;
+            } catch (error) {
+                console.error('Error loading position details:', error);
+                alert('Failed to load position details.');
+            }
+        }
+
+        document.getElementById('application-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const orgId = urlParams.get('id');
+
+            if (!orgId) {
+                alert('Invalid organization ID.');
+                return;
+            }
+
+            const formData = new FormData(event.target);
+
+            try {
+                const response = await fetch(`/organizations/${orgId}/apply`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to submit application.');
+                }
+
+                alert('Application submitted successfully!');
+                window.location.href = 'user_dashboard.html';
+            } catch (error) {
+                console.error('Error submitting application:', error);
+                alert('Failed to submit application.');
+            }
+        });
+
+        loadPositionDetails();
+    </script>
+</body>
+</html>

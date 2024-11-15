@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volunteer Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background-color: #0056b3;
+            padding: 10px 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #organization-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .organization-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .organization-card img {
+            max-width: 100px;
+            margin-bottom: 10px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .organization-card h3 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+
+        .organization-card p {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .organization-card button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .organization-card button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Volunteer Management System</h1>
+        <nav>
+            <a href="login.html">Login</a>
+            <a href="signup.html">Sign Up</a>
+            <a href="user_dashboard.html">User Dashboard</a>
+            <a href="organization_signup.html">Organization Sign Up</a>
+        </nav>
+    </header>
+    <main>
+        <h2>Available Organizations</h2>
+        <div id="organization-list">
+            <!-- Organizations will be dynamically loaded here -->
+        </div>
+    </main>
+    <script>
+        // Fetch and display organizations
+        async function loadOrganizations() {
+            try {
+                const response = await fetch('/organizations');
+                if (!response.ok) {
+                    throw new Error('Failed to load organizations');
+                }
+                const organizations = await response.json();
+                const list = document.getElementById('organization-list');
+                list.innerHTML = '';
+                organizations.forEach(org => {
+                    const card = document.createElement('div');
+                    card.className = 'organization-card';
+                    card.innerHTML = `
+                        <img src="${org.logo || 'default-logo.png'}" alt="${org.name} Logo">
+                        <h3>${org.name}</h3>
+                        <p>${org.description}</p>
+                        <p><strong>Location:</strong> ${org.location}</p>
+                        <button onclick="viewDetails(${org.id})">View Details</button>
+                    `;
+                    list.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading organizations:', error);
+                alert('Could not load organizations. Please try again later.');
+            }
+        }
+
+        // Redirect to organization details
+        function viewDetails(id) {
+            window.location.href = `organization_details.html?id=${id}`;
+        }
+
+        // Initialize page
+        loadOrganizations();
+    </script>
+</body>
+</html>

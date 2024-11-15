@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Notifications</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="user_dashboard.html">Dashboard</a>
+            <a href="login.html" onclick="logout()">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <ul id="notifications-list">
+            <!-- Notifications dynamically populated -->
+        </ul>
+    </main>
+    <script src="script.js"></script>
+    <script>
+        async function loadNotifications() {
+            try {
+                const response = await fetchWithAuth('/notifications');
+                const notifications = await response.json();
+                const list = document.getElementById('notifications-list');
+                list.innerHTML = '';
+                notifications.forEach(note => {
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `
+                        <p>${note.message}</p>
+                        <button onclick="markAsRead(${note.id})">Mark as Read</button>
+                    `;
+                    list.appendChild(listItem);
+                });
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+                alert('Failed to load notifications.');
+            }
+        }
+
+        async function markAsRead(notificationId) {
+            try {
+                const result = await fetchWithAuth(`/notifications/${notificationId}`, {
+                    method: 'PUT',
+                });
+                alert(result.message);
+                loadNotifications();
+            } catch (error) {
+                console.error('Error marking notification as read:', error);
+                alert('Failed to mark notification as read.');
+            }
+        }
+
+        loadNotifications();
+    </script>
+</body>
+</html>
