@@ -2,11 +2,10 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
 
 const app = express();
 const JWT_SECRET = 'your_secret_key';
+const multer = require('multer');
 
 // Configure multer for image uploads
 const storage = multer.diskStorage({
@@ -94,7 +93,7 @@ app.post('/login', (req, res) => {
 });
 
 // Get User Applications
-app.get('/user/applications', authenticateToken, authorizeRole('user'), (req, res) => {
+app.get('/user/applications', authenticateToken, (req, res) => {
     const userId = req.user.id;
     db.all(
         `SELECT a.id, o.name AS organization_name, p.title AS position_title, a.status
@@ -104,11 +103,18 @@ app.get('/user/applications', authenticateToken, authorizeRole('user'), (req, re
          WHERE a.user_id = ?`,
         [userId],
         (err, rows) => {
-            if (err) return res.status(500).send({ message: 'Error fetching applications', error: err.message });
-            res.send(rows);
+            if (err) {
+                console.error('Error fetching applications:', err.message);
+                return res.status(500).send({ message: 'Error fetching applications' });
+            }
+            console.log('Applications:', rows); // Debugging
+            res.status(200).send(rows);
         }
     );
 });
+
+
+
 
 // --- ORGANIZATION ROUTES ---
 
@@ -181,8 +187,6 @@ app.get('/admin/organizations', authenticateToken, authorizeRole('admin'), (req,
         res.send(rows);
     });
 });
-
-// Fetch profile
 app.get('/profile', authenticateToken, (req, res) => {
     const userId = req.user.id; // Extract user ID from the JWT token
 
@@ -198,8 +202,7 @@ app.get('/profile', authenticateToken, (req, res) => {
         }
     });
 });
-
-// Get All Organizations
+// Endpoint to fetch all organizations
 app.get('/organizations', (req, res) => {
     db.all(
         `SELECT id, name, description, location, logo FROM organizations`,
@@ -213,15 +216,11 @@ app.get('/organizations', (req, res) => {
         }
     );
 });
-
-// Get Organization Details with Volunteer Positions
+// Get Organization Details by ID
 app.get('/organizations/:id', (req, res) => {
     const orgId = req.params.id;
 
-    // Query for organization details
     const orgQuery = `SELECT id, name, description, location, logo FROM organizations WHERE id = ?`;
-
-    // Query for volunteer positions associated with the organization
     const positionsQuery = `SELECT id, title, description, requirements, location, deadline FROM volunteer_positions WHERE organization_id = ?`;
 
     db.get(orgQuery, [orgId], (err, organization) => {
@@ -234,19 +233,36 @@ app.get('/organizations/:id', (req, res) => {
             return res.status(404).send({ message: 'Organization not found' });
         }
 
-        // Fetch volunteer positions
         db.all(positionsQuery, [orgId], (err, positions) => {
             if (err) {
                 console.error('Error fetching volunteer positions:', err.message);
                 return res.status(500).send({ message: 'Error fetching volunteer positions' });
             }
 
-            // Combine organization details with positions
             organization.positions = positions || [];
             res.status(200).send(organization);
         });
     });
 });
+app.delete('/user/applications/:id/withdraw', authenticateToken, (req, res) => {
+    const applicationId = req.params.id;
+    const userId = req.user.id;
+
+    db.run(
+        `DELETE FROM applications WHERE id = ? AND user_id = ?`,
+        [applicationId, userId],
+        (err) => {
+            if (err) {
+                console.error('Error withdrawing application:', err.message);
+                return res.status(500).send({ message: 'Error withdrawing application' });
+            }
+            res.status(200).send({ message: 'Application withdrawn successfully' });
+        }
+    );
+});
+
+
+
 
 // Start Server
 app.listen(3000, () => {
