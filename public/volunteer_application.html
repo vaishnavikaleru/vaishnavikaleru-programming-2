@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Volunteer Application</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
         <h1>Volunteer Application</h1>
@@ -15,20 +17,11 @@
         </nav>
     </header>
     <main>
-        <section id="organization-details">
-            <!-- Organization and position details will be dynamically loaded -->
+        <section id="position-details">
+            <!-- Position details dynamically populated -->
         </section>
         <form id="application-form">
-            <h2>Apply for This Position</h2>
-            <label for="name">Your Name:</label>
-            <input type="text" id="name" name="name" required><br>
-
-            <label for="email">Your Email:</label>
-            <input type="email" id="email" name="email" required><br>
-
-            <label for="contact">Contact Info:</label>
-            <input type="text" id="contact" name="contact" required><br>
-
+            <h2>Submit Your Application</h2>
             <label for="reason">Why do you want to volunteer?</label>
             <textarea id="reason" name="reason" rows="4" required></textarea><br>
 
@@ -41,34 +34,47 @@
     <script>
         async function loadPositionDetails() {
             const urlParams = new URLSearchParams(window.location.search);
-            const orgId = urlParams.get('id');
-
-            if (!orgId) {
+            const positionId = urlParams.get('id');
+            if (!positionId) {
                 alert('Invalid position ID.');
                 return;
             }
 
             try {
-                const response = await fetch(`/organizations/${orgId}/positions`);
+                const response = await fetch(`/organizations/positions/${positionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}` // Include token for authentication
+                    }
+                });
 
                 if (!response.ok) {
-                    throw new Error('Failed to load position details.');
+                    // Check if the response is HTML instead of JSON
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('text/html')) {
+                        throw new Error('Server returned an unexpected response. Please check your API endpoint.');
+                    }
+
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to fetch position details.');
                 }
 
                 const data = await response.json();
 
-                const detailsSection = document.getElementById('organization-details');
+                const detailsSection = document.getElementById('position-details');
                 detailsSection.innerHTML = `
                     <h2>${data.organization.name}</h2>
-                    <p><strong>Position:</strong> ${data.position.title}</p>
+                    ${data.organization.logo ? `<img src="${data.organization.logo}" alt="${data.organization.name}" style="max-width: 200px;">` : ''}
+                    <p>${data.organization.description}</p>
+                    <h3>Position Details</h3>
+                    <p><strong>Title:</strong> ${data.position.title}</p>
                     <p><strong>Description:</strong> ${data.position.description}</p>
                     <p><strong>Requirements:</strong> ${data.position.requirements}</p>
                     <p><strong>Location:</strong> ${data.position.location}</p>
-                    <p><strong>Deadline:</strong> ${data.position.deadline}</p>
+                    <p><strong>Deadline:</strong> ${new Date(data.position.deadline).toLocaleDateString()}</p>
                 `;
             } catch (error) {
                 console.error('Error loading position details:', error);
-                alert('Failed to load position details.');
+                alert(error.message || 'Failed to load position details.');
             }
         }
 
@@ -76,34 +82,58 @@
             event.preventDefault();
 
             const urlParams = new URLSearchParams(window.location.search);
-            const orgId = urlParams.get('id');
+            const positionId = urlParams.get('id');
+            if (!positionId) {
+                alert('Invalid position ID.');
+                return;
+            }
 
-            if (!orgId) {
-                alert('Invalid organization ID.');
+            const reasonInput = document.getElementById('reason').value.trim();
+            if (!reasonInput) {
+                alert('Reason for applying is required.');
                 return;
             }
 
             const formData = new FormData(event.target);
+            formData.append('positionId', positionId);
 
             try {
-                const response = await fetch(`/organizations/${orgId}/apply`, {
+                console.log('Submitting application with payload:', {
+                    reason: reasonInput,
+                    positionId,
+                }); // Debugging payload
+
+                const response = await fetch(`/positions/${positionId}/apply`, {
                     method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`, // Include token for authentication
+                    },
                     body: formData,
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to submit application.');
+                    // Check if the response is HTML instead of JSON
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('text/html')) {
+                        throw new Error('Server returned an unexpected response. Please check your API endpoint.');
+                    }
+
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to submit application.');
                 }
 
-                alert('Application submitted successfully!');
+                const result = await response.json();
+                alert(result.message);
                 window.location.href = 'user_dashboard.html';
             } catch (error) {
                 console.error('Error submitting application:', error);
-                alert('Failed to submit application.');
+                alert(error.message || 'Failed to submit application.');
             }
         });
+
 
         loadPositionDetails();
     </script>
 </body>
+
 </html>

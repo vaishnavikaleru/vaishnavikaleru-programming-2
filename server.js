@@ -260,9 +260,143 @@ app.delete('/user/applications/:id/withdraw', authenticateToken, (req, res) => {
         }
     );
 });
+app.get('/positions/:id', (req, res) => {
+    const positionId = req.params.id;
+    db.get(
+        `SELECT p.title, p.description, p.requirements, p.location, p.deadline, o.name AS organization_name, o.logo, o.location AS org_location 
+         FROM volunteer_positions p 
+         JOIN organizations o ON p.organization_id = o.id 
+         WHERE p.id = ?`,
+        [positionId],
+        (err, data) => {
+            if (err) return res.status(500).send({ message: 'Error fetching position details' });
+            if (!data) return res.status(404).send({ message: 'Position not found' });
+            res.status(200).send(data);
+        }
+    );
+});
+app.post('/positions/:id/apply', authenticateToken,upload.none(), (req, res) => {
+    const positionId = req.params.id; // Extract position ID from URL
+    const userId = req.user.id; // Extract user ID from token
+    const reason  = req.body.reason; // Get reason from the request body
+    console.log('Position ID:', positionId);
+    console.log('User ID:', userId);
+    console.log('Reason:', reason);
+
+    if (!reason || reason.trim() === '') {
+        return res.status(400).send({ message: 'Reason for applying is required' });
+    }
+
+    // Check if the position exists
+    db.get(`SELECT * FROM volunteer_positions WHERE id = ?`, [positionId], (err, position) => {
+        if (err) {
+            console.error('Error checking position:', err.message);
+            return res.status(500).send({ message: 'Error checking position' });
+        }
+
+        if (!position) {
+            return res.status(404).send({ message: 'Position not found' });
+        }
+
+        // Check if the user has already applied for this position
+        db.get(
+            `SELECT * FROM applications WHERE user_id = ? AND position_id = ?`,
+            [userId, positionId],
+            (err, application) => {
+                if (err) {
+                    console.error('Error checking existing application:', err.message);
+                    return res.status(500).send({ message: 'Error checking existing application' });
+                }
+
+                if (application) {
+                    return res.status(400).send({ message: 'You have already applied for this position' });
+                }
+
+                // Insert the application
+                db.run(
+                    `INSERT INTO applications (user_id, position_id, reason, status) 
+                     VALUES (?, ?, ?, 'Pending')`,
+                    [userId, positionId, reason],
+                    (err) => {
+                        if (err) {
+                            console.error('Error inserting application:', err.message);
+                            return res.status(500).send({ message: 'Error submitting application' });
+                        }
+                    }
+                );
+                console.log('Position ID:', positionId);
+                console.log('User ID:', userId);
+                console.log('Reason:', reason);
+            }
+        );
+    });
+});
 
 
+// Endpoint to fetch a specific position and its organization details
+app.get('/organizations/positions/:id', (req, res) => {
+    const positionId = req.params.id;
 
+    // Validate the position ID
+    if (!positionId) {
+        return res.status(400).send({ message: 'Invalid position ID' });
+    }
+
+    // Query to fetch position details
+    const positionQuery = `
+        SELECT title, description, requirements, location, deadline, organization_id 
+        FROM volunteer_positions 
+        WHERE id = ?
+    `;
+
+    // Query to fetch organization details
+    const organizationQuery = `
+        SELECT name, description, logo, location 
+        FROM organizations 
+        WHERE id = ?
+    `;
+
+    // Execute the position query
+    db.get(positionQuery, [positionId], (err, position) => {
+        if (err) {
+            console.error('Error fetching position details:', err.message);
+            return res.status(500).send({ message: 'Error fetching position details' });
+        }
+
+        if (!position) {
+            return res.status(404).send({ message: 'Position not found' });
+        }
+
+        // Execute the organization query based on the organization_id from the position
+        db.get(organizationQuery, [position.organization_id], (err, organization) => {
+            if (err) {
+                console.error('Error fetching organization details:', err.message);
+                return res.status(500).send({ message: 'Error fetching organization details' });
+            }
+
+            if (!organization) {
+                return res.status(404).send({ message: 'Organization not found' });
+            }
+
+            // Combine position and organization details
+            res.status(200).send({
+                position: {
+                    title: position.title,
+                    description: position.description,
+                    requirements: position.requirements,
+                    location: position.location,
+                    deadline: position.deadline,
+                },
+                organization: {
+                    name: organization.name,
+                    description: organization.description,
+                    logo: organization.logo,
+                    location: organization.location,
+                },
+            });
+        });
+    });
+});
 
 // Start Server
 app.listen(3000, () => {
