@@ -10,16 +10,17 @@ CREATE TABLE IF NOT EXISTS users (
     gender TEXT
 );
 
--- Create Organizations Table
-CREATE TABLE IF NOT EXISTS organizations (
+CREATE TABLE IF NOT EXISTS applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    contact_info TEXT,
-    logo TEXT,
-    location TEXT,
-    description TEXT
+    user_id INTEGER NOT NULL,
+    position_id INTEGER NOT NULL,
+    reason TEXT,
+    ddocuments TEXT,
+    status TEXT DEFAULT 'Pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (position_id) REFERENCES volunteer_positions(id) ON DELETE CASCADE
 );
 
 -- Create Volunteer Positions Table
