@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Organization Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
         <h1>Organization Dashboard</h1>
@@ -32,7 +34,8 @@
                 <thead>
                     <tr>
                         <th>Volunteer Name</th>
-                        <th>Position</th>
+                        <th>Position Title</th>
+                        
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -43,38 +46,103 @@
     </main>
     <script src="script.js"></script>
     <script>
-        async function loadApplications() {
-            const response = await fetchWithAuth('/organization/applications');
-            const applications = await response.json();
-            const tableBody = document.querySelector('#applications-table tbody');
-            tableBody.innerHTML = '';
-            applications.forEach(app => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${app.volunteer_name}</td>
-                    <td>${app.position_title}</td>
-                    <td>${app.status}</td>
-                    <td>
-                        <button onclick="updateApplicationStatus(${app.id}, 'Approved')">Approve</button>
-                        <button onclick="updateApplicationStatus(${app.id}, 'Rejected')">Reject</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
+        // Sanitize HTML content
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
         }
 
+        // Fetch data with authentication
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('You need to log in first.');
+                window.location.href = 'login.html';
+                return;
+            }
+            options.headers = {
+                ...options.headers,
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            };
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            return response.json();
+        }
+
+        // Load applications
+        async function loadApplications() {
+            const tableBody = document.querySelector('#applications-table tbody');
+            tableBody.innerHTML = '<tr><td colspan="4">Loading applications...</td></tr>';
+
+            try {
+                const response = await fetchWithAuth('/organization/applications');
+                console.log('Applications Response:', response);
+
+                if (!response || response.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4">No applications found.</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = '';
+                response.forEach((app) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${sanitizeHTML(app.volunteer_name)}</td>
+                        <td>${sanitizeHTML(app.position_title)}</td>
+                        <td>${sanitizeHTML(app.status)}</td>
+                        <td>
+                            <button onclick="updateApplicationStatus(${app.id}, 'Approved')">Approve</button>
+                            <button onclick="updateApplicationStatus(${app.id}, 'Rejected')">Reject</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading applications:', error);
+                tableBody.innerHTML = '<tr><td colspan="4">Failed to load applications. Please try again later.</td></tr>';
+            }
+        }
+
+        // Update application status
+        async function updateApplicationStatus(applicationId, status) {
+            try {
+                const response = await fetchWithAuth(`/organization/applications/${applicationId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status }),
+                });
+                alert('Application status updated successfully.');
+                loadApplications(); // Refresh the applications list
+            } catch (error) {
+                console.error('Error updating application status:', error);
+                alert('Failed to update application status. Please try again.');
+            }
+        }
+
+        // Post new volunteer position
         document.getElementById('post-position-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             const formData = new FormData(event.target);
-            const result = await fetchWithAuth('/organization/positions', {
-                method: 'POST',
-                body: JSON.stringify(Object.fromEntries(formData)),
-            });
-            alert(result.message);
-            event.target.reset();
+
+            try {
+                const response = await fetchWithAuth('/organization/positions', {
+                    method: 'POST',
+                    body: JSON.stringify(Object.fromEntries(formData)),
+                });
+                alert('Volunteer position posted successfully.');
+                event.target.reset();
+            } catch (error) {
+                console.error('Error posting position:', error);
+                alert('Failed to post position. Please try again.');
+            }
         });
 
+        // Load applications on page load
         loadApplications();
     </script>
 </body>
+
 </html>

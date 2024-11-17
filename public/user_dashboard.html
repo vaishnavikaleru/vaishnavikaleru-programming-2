@@ -3,77 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Organization Dashboard</title>
+    <title>User Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>Organization Dashboard</h1>
+        <h1>User Dashboard</h1>
         <nav>
             <a href="index.html">Home</a>
+            <a href="notifications.html">Notifications</a>
+            <a href="profile.html">Profile</a>
             <a href="login.html" onclick="logout()">Logout</a>
         </nav>
     </header>
     <main>
         <section>
-            <h2>Post a Volunteer Position</h2>
-            <form id="post-position-form">
-                <label>Title: <input type="text" name="title" required></label>
-                <label>Description: <textarea name="description" required></textarea></label>
-                <label>Requirements: <textarea name="requirements" required></textarea></label>
-                <label>Location: <input type="text" name="location" required></label>
-                <label>Deadline: <input type="date" name="deadline" required></label>
-                <button type="submit">Post Position</button>
-            </form>
-        </section>
-        <section>
-            <h2>Manage Volunteer Applications</h2>
+            <h2>My Volunteer Applications</h2>
             <table id="applications-table">
                 <thead>
                     <tr>
-                        <th>Volunteer Name</th>
+                        <th>Organization</th>
                         <th>Position</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody>
+                    <!-- Dynamically populated -->
+                </tbody>
             </table>
         </section>
     </main>
     <script src="script.js"></script>
     <script>
+        // Load volunteer applications for the user
         async function loadApplications() {
-            const response = await fetchWithAuth('/organization/applications');
-            const applications = await response.json();
-            const tableBody = document.querySelector('#applications-table tbody');
-            tableBody.innerHTML = '';
-            applications.forEach(app => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${app.volunteer_name}</td>
-                    <td>${app.position_title}</td>
-                    <td>${app.status}</td>
-                    <td>
-                        <button onclick="updateApplicationStatus(${app.id}, 'Approved')">Approve</button>
-                        <button onclick="updateApplicationStatus(${app.id}, 'Rejected')">Reject</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
+            try {
+                const response = await fetchWithAuth('/user/applications');
+                console.log('API Response:', response); // Debugging
+
+                if (!response.ok) {
+                    throw new Error(await response.text()); // Capture server error details
+                }
+
+                const applications = await response.json();
+                console.log('Applications:', applications); // Debugging
+                const tableBody = document.querySelector('#applications-table tbody');
+                tableBody.innerHTML = '';
+
+                if (applications.length === 0) {
+                    const noDataRow = document.createElement('tr');
+                    noDataRow.innerHTML = '<td colspan="4" style="text-align:center;">No applications found.</td>';
+                    tableBody.appendChild(noDataRow);
+                    return;
+                }
+
+                applications.forEach(app => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${app.organization_name}</td>
+                        <td>${app.position_title}</td>
+                        <td>${app.status}</td>
+                        <td>
+                            <button onclick="withdrawApplication(${app.id})">Withdraw</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading applications:', error.message || error);
+                alert('Failed to load applications. Please try again later.');
+            }
         }
 
-        document.getElementById('post-position-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            const result = await fetchWithAuth('/organization/positions', {
-                method: 'POST',
-                body: JSON.stringify(Object.fromEntries(formData)),
-            });
-            alert(result.message);
-            event.target.reset();
-        });
+        // Withdraw a volunteer application
+        async function withdrawApplication(applicationId) {
+            const confirmation = confirm('Are you sure you want to withdraw this application?');
+            if (!confirmation) return;
 
+            try {
+                const response = await fetchWithAuth(`/user/applications/${applicationId}/withdraw`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const result = await response.json();
+                alert(result.message);
+                loadApplications(); // Reload the list after withdrawal
+            } catch (error) {
+                console.error('Error withdrawing application:', error.message || error);
+                alert('Failed to withdraw application. Please try again later.');
+            }
+        }
+
+        // Utility function for authenticated API requests
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('You need to log in first.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            options.headers = {
+                ...options.headers,
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            };
+
+            const response = await fetch(url, options);
+            console.log(`API Call to ${url}:`, response.status); // Debugging
+
+            if (response.status === 401 || response.status === 403) {
+                alert('Session expired. Please log in again.');
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            return response;
+        }
+
+        // Initial call to load applications
         loadApplications();
     </script>
 </body>

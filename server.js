@@ -4,8 +4,15 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const app = express();
-const JWT_SECRET = 'your_secret_key';
+const JWT_SECRET = 'voluntree';
 const multer = require('multer');
+const cors = require('cors');
+app.use(cors({
+    origin: 'http://localhost:3000', // Allow requests from localhost:3000
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow specific HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
+    preflightContinue: false, // Prevents the middleware from passing the request to the next handler
+}));
 
 // Configure multer for image uploads
 const storage = multer.diskStorage({
@@ -275,13 +282,13 @@ app.get('/positions/:id', (req, res) => {
         }
     );
 });
-app.post('/positions/:id/apply', authenticateToken,upload.none(), (req, res) => {
+app.post('/positions/:id/apply', authenticateToken, upload.none(), (req, res) => {
     const positionId = req.params.id; // Extract position ID from URL
     const userId = req.user.id; // Extract user ID from token
-    const reason  = req.body.reason; // Get reason from the request body
-    console.log('Position ID:', positionId);
-    console.log('User ID:', userId);
-    console.log('Reason:', reason);
+    const reason = req.body.reason; // Get reason from the request body
+    // console.log('Position ID:', positionId);
+    // console.log('User ID:', userId);
+    // console.log('Reason:', reason);
 
     if (!reason || reason.trim() === '') {
         return res.status(400).send({ message: 'Reason for applying is required' });
@@ -324,9 +331,7 @@ app.post('/positions/:id/apply', authenticateToken,upload.none(), (req, res) => 
                         }
                     }
                 );
-                console.log('Position ID:', positionId);
-                console.log('User ID:', userId);
-                console.log('Reason:', reason);
+               
             }
         );
     });
@@ -397,6 +402,27 @@ app.get('/organizations/positions/:id', (req, res) => {
         });
     });
 });
+app.put('/organization/applications/:id', authenticateToken, authorizeRole('organization'), (req, res) => {
+    const applicationId = req.params.id;
+    const { status } = req.body;
+
+    if (!status) {
+        return res.status(400).send({ message: 'Status is required.' });
+    }
+
+    db.run(
+        `UPDATE applications SET status = ? WHERE id = ?`,
+        [status, applicationId],
+        (err) => {
+            if (err) {
+                console.error('Error updating application status:', err.message);
+                return res.status(500).send({ message: 'Error updating application status.' });
+            }
+            res.status(200).send({ message: 'Application status updated successfully.' });
+        }
+    );
+});
+
 
 // Start Server
 app.listen(3000, () => {
