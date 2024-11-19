@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS applications (
     user_id INTEGER NOT NULL,
     position_id INTEGER NOT NULL,
     reason TEXT,
-    ddocuments TEXT,
+    documents TEXT,
     status TEXT DEFAULT 'Pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     organization_id INTEGER,
     message TEXT,
     is_read BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (organization_id) REFERENCES organizations(id)
 );

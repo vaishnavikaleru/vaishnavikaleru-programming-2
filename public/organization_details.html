@@ -23,8 +23,15 @@
             <!-- Volunteer positions dynamically populated -->
         </div>
     </main>
-    <script src="script.js"></script>
     <script>
+        // Sanitize user-generated content
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
+        // Fetch and display organization details
         async function loadOrganizationDetails() {
             const urlParams = new URLSearchParams(window.location.search);
             const orgId = urlParams.get('id');
@@ -33,36 +40,36 @@
                 return;
             }
             try {
-                const response = await fetch(`/organizations/${orgId}`);
+                const response = await fetch(`/organizations/${sanitizeHTML(orgId)}`);
                 if (!response.ok) {
-                    throw new Error('Failed to fetch organization details');
+                    throw new Error('Failed to fetch organization details.');
                 }
                 const organization = await response.json();
 
                 // Display organization details
                 const detailsDiv = document.getElementById('organization-details');
                 detailsDiv.innerHTML = `
-                    <img src="${organization.logo}" alt="${organization.name}" style="max-width: 200px; border-radius: 8px;">
-                    <h2>${organization.name}</h2>
-                    <p>${organization.description}</p>
-                    <p><strong>Location:</strong> ${organization.location}</p>
+                    ${organization.logo ? `<img src="${sanitizeHTML(organization.logo)}" alt="${sanitizeHTML(organization.name)}" style="max-width: 200px;">` : ''}
+                    <h2>${sanitizeHTML(organization.name)}</h2>
+                    <p>${sanitizeHTML(organization.description)}</p>
+                    <p><strong>Location:</strong> ${sanitizeHTML(organization.location)}</p>
                 `;
 
                 // Display volunteer positions
                 const positionsDiv = document.getElementById('volunteer-positions');
-                if (organization.positions.length > 0) {
+                if (organization.positions && organization.positions.length > 0) {
                     positionsDiv.innerHTML = organization.positions
                         .map(
                             (position) => `
-                        <div class="position-card">
-                            <h3>${position.title}</h3>
-                            <p>${position.description}</p>
-                            <p><strong>Requirements:</strong> ${position.requirements}</p>
-                            <p><strong>Location:</strong> ${position.location}</p>
-                            <p><strong>Deadline:</strong> ${new Date(position.deadline).toLocaleDateString()}</p>
-                            <button onclick="applyForPosition(${position.id})">Apply</button>
-                        </div>
-                        `
+                            <div class="position-card">
+                                <h3>${sanitizeHTML(position.title)}</h3>
+                                <p>${sanitizeHTML(position.description)}</p>
+                                <p><strong>Requirements:</strong> ${sanitizeHTML(position.requirements)}</p>
+                                <p><strong>Location:</strong> ${sanitizeHTML(position.location)}</p>
+                                <p><strong>Deadline:</strong> ${new Date(position.deadline).toLocaleDateString()}</p>
+                                <button onclick="applyForPosition(${position.id}, '${position.deadline}')">Apply</button>
+                            </div>
+                            `
                         )
                         .join('');
                 } else {
@@ -70,14 +77,31 @@
                 }
             } catch (error) {
                 console.error('Error loading organization details:', error);
-                alert('Failed to load organization details.');
+                alert('Failed to load organization details. Please try again later.');
             }
         }
 
-        function applyForPosition(positionId) {
-            window.location.href = `volunteer_application.html?position_id=${positionId}`;
+        // Handle application action
+        function applyForPosition(positionId, deadline) {
+            const currentDate = new Date();
+            const deadlineDate = new Date(deadline);
+
+            if (!positionId) {
+                alert('Invalid position ID.');
+                return;
+            }
+
+            // Check deadline
+            if (currentDate > deadlineDate) {
+                alert('The deadline for this position has passed.');
+                return;
+            }
+
+            // Redirect to application page
+            window.location.href = `volunteer_application.html?id=${sanitizeHTML(positionId)}`;
         }
 
+        // Initialize page
         loadOrganizationDetails();
     </script>
 </body>

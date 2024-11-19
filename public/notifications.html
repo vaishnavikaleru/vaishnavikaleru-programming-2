@@ -1,11 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notifications</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background-color: #0056b3;
+            padding: 10px 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #007bff;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        li p {
+            margin: 0;
+            color: #555;
+        }
+
+        li .timestamp {
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #empty-message {
+            text-align: center;
+            color: #888;
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+    </style>
 </head>
+
 <body>
     <header>
         <h1>Notifications</h1>
@@ -19,36 +112,53 @@
         <ul id="notifications-list">
             <!-- Notifications dynamically populated -->
         </ul>
+        <div id="empty-message" style="display: none;">
+            You have no new notifications.
+        </div>
     </main>
     <script src="script.js"></script>
     <script>
         async function loadNotifications() {
             try {
                 const response = await fetchWithAuth('/notifications');
-                const notifications = await response.json();
+                const notifications = await response;
+
                 const list = document.getElementById('notifications-list');
                 list.innerHTML = '';
+
+                if (notifications.length === 0) {
+                    list.innerHTML = '<li>No notifications found.</li>';
+                    return;
+                }
+
                 notifications.forEach(note => {
                     const listItem = document.createElement('li');
                     listItem.innerHTML = `
-                        <p>${note.message}</p>
-                        <button onclick="markAsRead(${note.id})">Mark as Read</button>
-                    `;
+                <p>${note.message}</p>
+                <button onclick="markAsRead(${note.id})">Mark as Read</button>
+            `;
                     list.appendChild(listItem);
                 });
             } catch (error) {
                 console.error('Error loading notifications:', error);
-                alert('Failed to load notifications.');
+                alert(error.message);
             }
         }
 
+
         async function markAsRead(notificationId) {
             try {
-                const result = await fetchWithAuth(`/notifications/${notificationId}`, {
+                const response = await fetchWithAuth(`/notifications/${notificationId}`, {
                     method: 'PUT',
                 });
+
+                if (!response.ok) {
+                    throw new Error('Failed to mark notification as read.');
+                }
+
+                const result = await response.json();
                 alert(result.message);
-                loadNotifications();
+                loadNotifications(); // Refresh notifications
             } catch (error) {
                 console.error('Error marking notification as read:', error);
                 alert('Failed to mark notification as read.');

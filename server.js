@@ -14,16 +14,42 @@ app.use(cors({
     preflightContinue: false, // Prevents the middleware from passing the request to the next handler
 }));
 
-// Configure multer for image uploads
+// const multer = require('multer');
+const path = require('path');
+
+// Configure Multer for file uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, './public/uploads'); // Directory to save uploaded files
+        if (file.fieldname === 'logo') {
+            cb(null, './public/uploads/logos'); // Directory for organization logos
+        } else if (file.fieldname === 'documents') {
+            cb(null, './public/uploads/documents'); // Directory for application documents
+        } else {
+            cb(new Error('Unexpected field')); // Reject unexpected fields
+        }
     },
     filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`); // Save file with a unique name
+        cb(null, `${Date.now()}-${file.originalname}`);
     },
 });
-const upload = multer({ storage });
+
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'application/msword'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Unsupported file type'));
+    }
+};
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB file size limit
+    fileFilter,
+});
+
+module.exports = upload;
+
 
 // Middleware
 app.use(express.json());
@@ -128,7 +154,7 @@ app.get('/user/applications', authenticateToken, (req, res) => {
 // Organization Sign-up
 app.post('/organization/signup', upload.single('logo'), async (req, res) => {
     const { name, email, password, contact_info, location, description } = req.body;
-    const logo = req.file ? `/uploads/${req.file.filename}` : null; // Get file path
+    const logo = req.file ? `/uploads/logos/${req.file.filename}` : null; // Get file path
 
     const hashedPassword = await bcrypt.hash(password, 10);
     db.run(
@@ -282,13 +308,33 @@ app.get('/positions/:id', (req, res) => {
         }
     );
 });
-app.post('/positions/:id/apply', authenticateToken, upload.none(), (req, res) => {
+// Multer configuration
+const uploads = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            cb(null, './public/uploads'); // Directory to save uploaded files
+        },
+        filename: (req, file, cb) => {
+            cb(null, `${Date.now()}-${file.originalname}`); // Save file with a unique name
+        },
+    }),
+    fileFilter: (req, file, cb) => {
+        // Only allow specific file types
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF, JPEG, and PNG files are allowed.'));
+        }
+    },
+});
+
+// Handle volunteer application with document upload
+app.post('/positions/:id/apply', authenticateToken, uploads.single('documents'), (req, res) => {
     const positionId = req.params.id; // Extract position ID from URL
     const userId = req.user.id; // Extract user ID from token
-    const reason = req.body.reason; // Get reason from the request body
-    // console.log('Position ID:', positionId);
-    // console.log('User ID:', userId);
-    // console.log('Reason:', reason);
+    const reason = req.body.reason;
+    const documents = req.file ? req.file.filename : null; // Uploaded document filename
 
     if (!reason || reason.trim() === '') {
         return res.status(400).send({ message: 'Reason for applying is required' });
@@ -303,6 +349,13 @@ app.post('/positions/:id/apply', authenticateToken, upload.none(), (req, res) =>
 
         if (!position) {
             return res.status(404).send({ message: 'Position not found' });
+        }
+
+        const deadlineDate = new Date(position.deadline);
+        const currentDate = new Date();
+
+        if (currentDate > deadlineDate) {
+            return res.status(400).send({ message: 'The deadline for this position has passed.' });
         }
 
         // Check if the user has already applied for this position
@@ -321,21 +374,40 @@ app.post('/positions/:id/apply', authenticateToken, upload.none(), (req, res) =>
 
                 // Insert the application
                 db.run(
-                    `INSERT INTO applications (user_id, position_id, reason, status) 
-                     VALUES (?, ?, ?, 'Pending')`,
-                    [userId, positionId, reason],
-                    (err) => {
+                    `INSERT INTO applications (user_id, position_id, reason, documents, status) 
+                     VALUES (?, ?, ?, ?, 'Pending')`,
+                    [userId, positionId, reason, documents],
+                    function (err) {
                         if (err) {
                             console.error('Error inserting application:', err.message);
                             return res.status(500).send({ message: 'Error submitting application' });
                         }
+
+                        // Create a notification for the user
+                        const message = `Your application for the position "${position.title}" has been submitted successfully.`;
+                        db.run(
+                            `INSERT INTO notifications (user_id, message, is_read) 
+                             VALUES (?, ?, ?)`,
+                            [userId, message, false],
+                            (err) => {
+                                if (err) {
+                                    console.error('Error creating notification:', err.message);
+                                    return res
+                                        .status(500)
+                                        .send({ message: 'Application submitted, but failed to create notification.' });
+                                }
+                                res.status(200).send({ message: 'Application submitted successfully, and notification created.' });
+                            }
+                        );
                     }
                 );
-               
             }
         );
     });
 });
+
+
+
 
 
 // Endpoint to fetch a specific position and its organization details
@@ -419,6 +491,29 @@ app.put('/organization/applications/:id', authenticateToken, authorizeRole('orga
                 return res.status(500).send({ message: 'Error updating application status.' });
             }
             res.status(200).send({ message: 'Application status updated successfully.' });
+        }
+    );
+});
+app.get('/notifications', authenticateToken, (req, res) => {
+    const userId = req.user.id;
+
+    db.all(
+        `SELECT id, message, is_read, created_at 
+         FROM notifications 
+         WHERE user_id = ? 
+         ORDER BY created_at DESC`,
+        [userId],
+        (err, rows) => {
+            if (err) {
+                console.error('Error fetching notifications:', err.message);
+                return res.status(500).send({ message: 'Error fetching notifications' });
+            }
+
+            if (!rows || rows.length === 0) {
+                return res.status(404).send({ message: 'No notifications found' });
+            }
+
+            res.status(200).send(rows);
         }
     );
 });
