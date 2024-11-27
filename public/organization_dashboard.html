@@ -88,19 +88,21 @@
                 }
 
                 tableBody.innerHTML = '';
-                response.forEach((app) => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${sanitizeHTML(app.volunteer_name)}</td>
-                        <td>${sanitizeHTML(app.position_title)}</td>
-                        <td>${sanitizeHTML(app.status)}</td>
-                        <td>
-                            <button onclick="updateApplicationStatus(${app.id}, 'Approved')">Approve</button>
-                            <button onclick="updateApplicationStatus(${app.id}, 'Rejected')">Reject</button>
-                        </td>
-                    `;
-                    tableBody.appendChild(row);
-                });
+                response
+                    .filter((app) => app.status !== 'Rejected') // Filter out rejected applications
+                    .forEach((app) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                    <td>${sanitizeHTML(app.volunteer_name)}</td>
+                    <td>${sanitizeHTML(app.position_title)}</td>
+                    <td>${sanitizeHTML(app.status)}</td>
+                    <td>
+                        <button onclick="updateApplicationStatus(${app.id}, 'Approved')">Approve</button>
+                        <button onclick="updateApplicationStatus(${app.id}, 'Rejected')">Reject</button>
+                    </td>
+                `;
+                        tableBody.appendChild(row);
+                    });
             } catch (error) {
                 console.error('Error loading applications:', error);
                 tableBody.innerHTML = '<tr><td colspan="4">Failed to load applications. Please try again later.</td></tr>';
