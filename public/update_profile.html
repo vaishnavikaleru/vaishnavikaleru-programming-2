@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Profile</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Update Profile</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="user_dashboard.html">Dashboard</a>
+            <a href="login.html" onclick="logout()">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <form id="update-profile-form">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" required><br>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required><br>
+
+            <label for="contact_info">Contact Info:</label>
+            <input type="text" id="contact_info" name="contact_info" required><br>
+
+            <label for="qualification">Qualification:</label>
+            <input type="text" id="qualification" name="qualification"><br>
+
+            <label for="age">Age:</label>
+            <input type="number" id="age" name="age" min="1"><br>
+
+            <label for="gender">Gender:</label>
+            <select id="gender" name="gender">
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+            </select><br>
+
+            <button type="submit">Update Profile</button>
+        </form>
+    </main>
+    <script>
+        // Fetch existing profile details
+        async function loadProfile() {
+            try {
+                const response = await fetchWithAuth('/profile', { method: 'GET' });
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const profile = await response.json();
+                document.getElementById('name').value = profile.name || '';
+                document.getElementById('email').value = profile.email || '';
+                document.getElementById('contact_info').value = profile.contact_info || '';
+                document.getElementById('qualification').value = profile.qualification || '';
+                document.getElementById('age').value = profile.age || '';
+                document.getElementById('gender').value = profile.gender || '';
+            } catch (error) {
+                console.error('Error loading profile:', error.message || error);
+                alert('Failed to load profile. Please try again later.');
+            }
+        }
+
+        // Update profile
+        document.getElementById('update-profile-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                contact_info: document.getElementById('contact_info').value.trim(),
+                qualification: document.getElementById('qualification').value.trim(),
+                age: document.getElementById('age').value.trim(),
+                gender: document.getElementById('gender').value.trim(),
+            };
+
+            try {
+                const response = await fetchWithAuth('/user/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData),
+                });
+
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const result = await response.json();
+                alert(result.message);
+                window.location.href = 'user_dashboard.html';
+            } catch (error) {
+                console.error('Error updating profile:', error.message || error);
+                alert('Failed to update profile. Please try again later.');
+            }
+        });
+
+        // Utility function for authenticated API requests
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('You need to log in first.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            options.headers = {
+                ...options.headers,
+                Authorization: `Bearer ${token}`,
+            };
+
+            const response = await fetch(url, options);
+
+            if (response.status === 401 || response.status === 403) {
+                alert('Session expired. Please log in again.');
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            return response;
+        }
+
+        // Load the profile on page load
+        loadProfile();
+    </script>
+</body>
+</html>
