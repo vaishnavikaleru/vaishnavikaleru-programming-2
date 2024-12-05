@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <header>
         <h1>User Dashboard</h1>
@@ -17,6 +19,7 @@
         </nav>
     </header>
     <main>
+        <!-- Section: My Applications -->
         <section>
             <h2>My Volunteer Applications</h2>
             <table id="applications-table">
@@ -33,28 +36,41 @@
                 </tbody>
             </table>
         </section>
+
+        <!-- Section: Available Positions -->
+        <section>
+            <h2>Available Volunteer Positions</h2>
+            <table id="positions-table">
+                <thead>
+                    <tr>
+                        <th>Organization</th>
+                        <th>Position</th>
+                        <th>Location</th>
+                        <th>Deadline</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamically populated -->
+                </tbody>
+            </table>
+        </section>
     </main>
-    <script src="script.js"></script>
     <script>
-        // Load volunteer applications for the user
+        // Load user's applications
         async function loadApplications() {
             try {
                 const response = await fetchWithAuth('/user/applications');
-                console.log('API Response:', response); // Debugging
-
                 if (!response.ok) {
-                    throw new Error(await response.text()); // Capture server error details
+                    throw new Error(await response.text());
                 }
 
                 const applications = await response.json();
-                console.log('Applications:', applications); // Debugging
                 const tableBody = document.querySelector('#applications-table tbody');
                 tableBody.innerHTML = '';
 
                 if (applications.length === 0) {
-                    const noDataRow = document.createElement('tr');
-                    noDataRow.innerHTML = '<td colspan="4" style="text-align:center;">No applications found.</td>';
-                    tableBody.appendChild(noDataRow);
+                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No applications found.</td></tr>';
                     return;
                 }
 
@@ -71,12 +87,55 @@
                     tableBody.appendChild(row);
                 });
             } catch (error) {
-                console.error('Error loading applications:', error.message || error);
+                console.error('Error loading applications:', error);
                 alert('Failed to load applications. Please try again later.');
             }
         }
 
-        // Withdraw a volunteer application
+        // Load available positions
+        // Load available volunteer positions
+        async function loadAvailablePositions() {
+            try {
+                const response = await fetchWithAuth('/volunteer-positions');
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const positions = await response.json();
+                const tableBody = document.querySelector('#positions-table tbody');
+                tableBody.innerHTML = '';
+
+                if (positions.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No positions available.</td></tr>';
+                    return;
+                }
+
+                positions.forEach(pos => {
+                    const deadline = new Date(pos.deadline).toLocaleDateString();
+                    const isPastDeadline = new Date() > new Date(pos.deadline);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                <td>${pos.organization_name}</td>
+                <td>${pos.position_title}</td>
+                <td>${pos.position_location}</td>
+                <td>${deadline}</td>
+                <td>
+                    ${isPastDeadline
+                            ? '<span style="color: red;">Closed</span>'
+                            : `<button onclick="applyForPosition(${pos.position_id})">Apply</button>`
+                        }
+                </td>
+            `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading positions:', error);
+                alert('Failed to load positions. Please try again later.');
+            }
+        }
+
+        // Withdraw a user's application
         async function withdrawApplication(applicationId) {
             const confirmation = confirm('Are you sure you want to withdraw this application?');
             if (!confirmation) return;
@@ -92,11 +151,16 @@
 
                 const result = await response.json();
                 alert(result.message);
-                loadApplications(); // Reload the list after withdrawal
+                loadApplications(); // Reload the applications after withdrawal
             } catch (error) {
-                console.error('Error withdrawing application:', error.message || error);
+                console.error('Error withdrawing application:', error);
                 alert('Failed to withdraw application. Please try again later.');
             }
+        }
+
+        // Apply for a position
+        function applyForPosition(positionId) {
+            window.location.href = `volunteer_application.html?id=${positionId}`;
         }
 
         // Utility function for authenticated API requests
@@ -115,7 +179,6 @@
             };
 
             const response = await fetch(url, options);
-            console.log(`API Call to ${url}:`, response.status); // Debugging
 
             if (response.status === 401 || response.status === 403) {
                 alert('Session expired. Please log in again.');
@@ -127,8 +190,10 @@
             return response;
         }
 
-        // Initial call to load applications
+        // Initialize page
         loadApplications();
+        loadAvailablePositions();
     </script>
 </body>
+
 </html>
