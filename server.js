@@ -517,7 +517,37 @@ app.get('/notifications', authenticateToken, (req, res) => {
         }
     );
 });
-
+app.get('/volunteer-positions', authenticateToken, (req, res) => {
+    db.all(
+        `SELECT 
+            vp.id AS position_id, 
+            vp.title AS position_title, 
+            vp.description AS position_description, 
+            vp.requirements, 
+            vp.location AS position_location, 
+            vp.deadline, 
+            o.id AS organization_id, 
+            o.name AS organization_name, 
+            o.contact_info AS organization_contact, 
+            o.location AS organization_location, 
+            o.description AS organization_description
+         FROM 
+            volunteer_positions vp
+         JOIN 
+            organizations o ON vp.organization_id = o.id
+         ORDER BY 
+            vp.deadline ASC`, // Optional: Order positions by deadline
+        [],
+        (err, rows) => {
+            if (err) {
+                console.error('Error fetching volunteer positions:', err.message);
+                return res.status(500).send({ message: 'Error fetching volunteer positions' });
+            }
+            console.log('Volunteer Positions:', rows); // Debugging
+            res.status(200).send(rows);
+        }
+    );
+});
 
 // Start Server
 app.listen(3000, () => {
