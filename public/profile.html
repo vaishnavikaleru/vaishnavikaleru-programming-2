@@ -55,6 +55,14 @@
             background-color: #0056b3;
         }
 
+        button.delete-btn {
+            background-color: #dc3545;
+        }
+
+        button.delete-btn:hover {
+            background-color: #b02a37;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -69,10 +77,6 @@
         table th {
             background-color: #007bff;
             color: white;
-        }
-
-        .action-buttons button {
-            margin-right: 5px;
         }
     </style>
 </head>
@@ -92,6 +96,7 @@
             <div><strong>Gender:</strong> <span id="user-gender"></span></div>
             <button onclick="editProfile()">Edit Profile</button>
             <button onclick="viewNotifications()">View Notifications</button>
+            <button class="delete-btn" onclick="deleteAccount()">Delete Account</button>
         </section>
 
         <!-- Volunteer Applications -->
@@ -189,6 +194,22 @@
         // View notifications
         function viewNotifications() {
             window.location.href = 'notifications.html'; // Redirect to notifications page
+        }
+
+        // Delete user account
+        async function deleteAccount() {
+            const confirmation = confirm('Are you sure you want to delete your account? This action is irreversible.');
+            if (!confirmation) return;
+
+            try {
+                const response = await fetchWithAuth('/user/delete-account', { method: 'DELETE' });
+                alert('Account deleted successfully.');
+                localStorage.removeItem('token');
+                window.location.href = 'login.html'; // Redirect to login page after deletion
+            } catch (error) {
+                console.error('Error deleting account:', error);
+                alert('Could not delete account. Please try again later.');
+            }
         }
 
         // Load profile and applications on page load
