@@ -77,7 +77,12 @@
                 applications.forEach(app => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${app.organization_name}</td>
+                        <td>
+                            <a href="organization_details.html?id=${app.organization_id}" 
+                               style="text-decoration: none; color: blue;">
+                               ${app.organization_name}
+                            </a>
+                        </td>
                         <td>${app.position_title}</td>
                         <td>${app.status}</td>
                         <td>
@@ -93,7 +98,6 @@
         }
 
         // Load available positions
-        // Load available volunteer positions
         async function loadAvailablePositions() {
             try {
                 const response = await fetchWithAuth('/volunteer-positions');
@@ -116,17 +120,21 @@
 
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                <td>${pos.organization_name}</td>
-                <td>${pos.position_title}</td>
-                <td>${pos.position_location}</td>
-                <td>${deadline}</td>
-                <td>
-                    ${isPastDeadline
-                            ? '<span style="color: red;">Closed</span>'
-                            : `<button onclick="applyForPosition(${pos.position_id})">Apply</button>`
-                        }
-                </td>
-            `;
+                        <td>
+                            <a href="organization_details.html?id=${pos.organization_id}" 
+                               style="text-decoration: none; color: blue;">
+                               ${pos.organization_name}
+                            </a>
+                        </td>
+                        <td>${pos.position_title}</td>
+                        <td>${pos.position_location}</td>
+                        <td>${deadline}</td>
+                        <td>
+                            ${isPastDeadline
+                                ? '<span style="color: red;">Closed</span>'
+                                : `<button onclick="applyForPosition(${pos.position_id})">Apply</button>`}
+                        </td>
+                    `;
                     tableBody.appendChild(row);
                 });
             } catch (error) {
