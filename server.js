@@ -328,7 +328,35 @@ const uploads = multer({
         }
     },
 });
+app.put('/user/profile', authenticateToken, (req, res) => {
+    const userId = req.user.id; // Extract user ID from the token
+    const { name, email, contact_info, qualification, age, gender } = req.body;
 
+    // Validate the inputs
+    if (!name || !email || !contact_info) {
+        return res.status(400).send({ message: 'Name, email, and contact info are required.' });
+    }
+
+    // Update the user profile in the database
+    db.run(
+        `UPDATE users 
+         SET name = ?, email = ?, contact_info = ?, qualification = ?, age = ?, gender = ?
+         WHERE id = ?`,
+        [name, email, contact_info, qualification, age, gender, userId],
+        function (err) {
+            if (err) {
+                console.error('Error updating user profile:', err.message);
+                return res.status(500).send({ message: 'Error updating user profile.' });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).send({ message: 'User not found.' });
+            }
+
+            res.status(200).send({ message: 'Profile updated successfully.' });
+        }
+    );
+});
 // Handle volunteer application with document upload
 app.post('/positions/:id/apply', authenticateToken, uploads.single('documents'), (req, res) => {
     const positionId = req.params.id; // Extract position ID from URL
