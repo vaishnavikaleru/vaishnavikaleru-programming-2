@@ -576,7 +576,29 @@ app.get('/volunteer-positions', authenticateToken, (req, res) => {
         }
     );
 });
+// Endpoint to delete user account
+app.delete('/user/delete-account', authenticateToken, (req, res) => {
+    const userId = req.user.id; // Assuming user ID is available from the token payload
 
+    // Delete user from database
+    db.run(
+        `DELETE FROM users WHERE id = ?`,
+        [userId],
+        function (err) {
+            if (err) {
+                console.error('Error deleting user account:', err.message);
+                return res.status(500).send({ message: 'Error deleting user account' });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).send({ message: 'User account not found' });
+            }
+
+            console.log(`User with ID ${userId} deleted successfully.`);
+            res.status(200).send({ message: 'User account deleted successfully' });
+        }
+    );
+});
 // Start Server
 app.listen(3000, () => {
     console.log('Server running at http://localhost:3000');
