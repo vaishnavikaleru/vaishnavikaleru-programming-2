@@ -14,9 +14,7 @@ app.use(cors({
     preflightContinue: false, // Prevents the middleware from passing the request to the next handler
 }));
 
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'signup.html'));
-  });
+
 
 // const multer = require('multer');
 const path = require('path');
