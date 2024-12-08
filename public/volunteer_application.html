@@ -25,51 +25,47 @@
             <label for="reason">Why do you want to volunteer?</label>
             <textarea id="reason" name="reason" rows="4" required></textarea><br>
 
-            <label for="documents">Upload Documents (Optional):</label>
-            <input type="file" id="documents" name="documents" multiple><br>
+            <label for="documents">Upload Supporting Documents (Optional):</label>
+            <input type="file" id="documents" name="documents" accept=".pdf,.doc,.docx"><br>
 
             <button type="submit">Submit Application</button>
         </form>
+        <div id="feedback" style="display: none; color: green;">Submitting your application...</div>
     </main>
     <script>
+        // Fetch position details
         async function loadPositionDetails() {
             const urlParams = new URLSearchParams(window.location.search);
             const positionId = urlParams.get('id');
             if (!positionId) {
                 alert('Invalid position ID.');
+                window.location.href = 'index.html'; // Redirect to home if no ID
                 return;
             }
 
             try {
                 const response = await fetch(`/organizations/positions/${positionId}`, {
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}` // Include token for authentication
-                    }
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`, // Include token for authentication
+                    },
                 });
 
                 if (!response.ok) {
-                    // Check if the response is HTML instead of JSON
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('text/html')) {
-                        throw new Error('Server returned an unexpected response. Please check your API endpoint.');
-                    }
-
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to fetch position details.');
                 }
 
                 const data = await response.json();
-
                 const detailsSection = document.getElementById('position-details');
                 detailsSection.innerHTML = `
-                    <h2>${data.organization.name}</h2>
-                    ${data.organization.logo ? `<img src="${data.organization.logo}" alt="${data.organization.name}" style="max-width: 200px;">` : ''}
-                    <p>${data.organization.description}</p>
+                    <h2>${sanitizeHTML(data.organization.name)}</h2>
+                    ${data.organization.logo ? `<img src="${sanitizeHTML(data.organization.logo)}" alt="${sanitizeHTML(data.organization.name)}" style="max-width: 200px;">` : ''}
+                    <p>${sanitizeHTML(data.organization.description)}</p>
                     <h3>Position Details</h3>
-                    <p><strong>Title:</strong> ${data.position.title}</p>
-                    <p><strong>Description:</strong> ${data.position.description}</p>
-                    <p><strong>Requirements:</strong> ${data.position.requirements}</p>
-                    <p><strong>Location:</strong> ${data.position.location}</p>
+                    <p><strong>Title:</strong> ${sanitizeHTML(data.position.title)}</p>
+                    <p><strong>Description:</strong> ${sanitizeHTML(data.position.description)}</p>
+                    <p><strong>Requirements:</strong> ${sanitizeHTML(data.position.requirements)}</p>
+                    <p><strong>Location:</strong> ${sanitizeHTML(data.position.location)}</p>
                     <p><strong>Deadline:</strong> ${new Date(data.position.deadline).toLocaleDateString()}</p>
                 `;
             } catch (error) {
@@ -78,6 +74,7 @@
             }
         }
 
+        // Handle form submission
         document.getElementById('application-form').addEventListener('submit', async (event) => {
             event.preventDefault();
 
@@ -88,21 +85,25 @@
                 return;
             }
 
-            const reasonInput = document.getElementById('reason').value.trim();
-            if (!reasonInput) {
+            const reason = document.getElementById('reason').value.trim();
+            if (!reason) {
                 alert('Reason for applying is required.');
                 return;
             }
 
-            const formData = new FormData(event.target);
+            const feedback = document.getElementById('feedback');
+            feedback.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('reason', reason);
             formData.append('positionId', positionId);
 
-            try {
-                console.log('Submitting application with payload:', {
-                    reason: reasonInput,
-                    positionId,
-                }); // Debugging payload
+            const documents = document.getElementById('documents').files[0];
+            if (documents) {
+                formData.append('documents', documents);
+            }
 
+            try {
                 const response = await fetch(`/positions/${positionId}/apply`, {
                     method: 'POST',
                     headers: {
@@ -112,12 +113,6 @@
                 });
 
                 if (!response.ok) {
-                    // Check if the response is HTML instead of JSON
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('text/html')) {
-                        throw new Error('Server returned an unexpected response. Please check your API endpoint.');
-                    }
-
                     const errorData = await response.json();
                     throw new Error(errorData.message || 'Failed to submit application.');
                 }
@@ -128,10 +123,19 @@
             } catch (error) {
                 console.error('Error submitting application:', error);
                 alert(error.message || 'Failed to submit application.');
+            } finally {
+                feedback.style.display = 'none';
             }
         });
 
+        // Sanitize input
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
 
+        // Initialize
         loadPositionDetails();
     </script>
 </body>

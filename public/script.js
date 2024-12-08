@@ -23,22 +23,38 @@ async function fetchWithAuth(url, options = {}) {
         'Content-Type': 'application/json',
     };
 
-    const response = await fetch(url, options);
+    try {
+        const response = await fetch(url, options);
 
-    // Handle session expiration or unauthorized access
-    if (response.status === 401 || response.status === 403) {
-        alert('Session expired. Please log in again.');
-        localStorage.removeItem('token');
-        window.location.href = 'login.html';
-        return;
+        // Handle session expiration or unauthorized access
+        if (response.status === 401 || response.status === 403) {
+            alert('Session expired. Please log in again.');
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Handle CORS-related issues explicitly
+        if (response.status === 0) {
+            throw new Error('CORS error: The server is not responding to cross-origin requests. Please ensure CORS is enabled on the server.');
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || response.statusText);
+        }
+
+        return response.json();
+    } catch (error) {
+        // Handle errors such as CORS or network issues
+        if (error.message.includes('CORS error')) {
+            alert(error.message);
+        } else {
+            console.error('Error fetching data:', error);
+            alert('There was an error with the request. Please try again later.');
+        }
+        return null; // Return null or handle errors as needed
     }
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || response.statusText);
-    }
-
-    return response.json();
 }
 
 // Log out the user and redirect to login page

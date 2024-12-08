@@ -35,7 +35,7 @@
                     <tr>
                         <th>Volunteer Name</th>
                         <th>Position Title</th>
-                        
+
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -74,6 +74,7 @@
         }
 
         // Load applications
+        // Load applications
         async function loadApplications() {
             const tableBody = document.querySelector('#applications-table tbody');
             tableBody.innerHTML = '<tr><td colspan="4">Loading applications...</td></tr>';
@@ -108,6 +109,7 @@
                 tableBody.innerHTML = '<tr><td colspan="4">Failed to load applications. Please try again later.</td></tr>';
             }
         }
+
 
         // Update application status
         async function updateApplicationStatus(applicationId, status) {

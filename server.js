@@ -14,6 +14,10 @@ app.use(cors({
     preflightContinue: false, // Prevents the middleware from passing the request to the next handler
 }));
 
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'signup.html'));
+  });
+
 // const multer = require('multer');
 const path = require('path');
 
@@ -205,21 +209,6 @@ app.get('/organization/applications', authenticateToken, authorizeRole('organiza
 
 // --- ADMIN ROUTES ---
 
-// Get All Users
-app.get('/admin/users', authenticateToken, authorizeRole('admin'), (req, res) => {
-    db.all('SELECT id, name, email FROM users', [], (err, rows) => {
-        if (err) return res.status(500).send({ message: 'Error fetching users', error: err.message });
-        res.send(rows);
-    });
-});
-
-// Get All Organizations
-app.get('/admin/organizations', authenticateToken, authorizeRole('admin'), (req, res) => {
-    db.all('SELECT id, name, email FROM organizations', [], (err, rows) => {
-        if (err) return res.status(500).send({ message: 'Error fetching organizations', error: err.message });
-        res.send(rows);
-    });
-});
 app.get('/profile', authenticateToken, (req, res) => {
     const userId = req.user.id; // Extract user ID from the JWT token
 
@@ -235,6 +224,36 @@ app.get('/profile', authenticateToken, (req, res) => {
         }
     });
 });
+app.put('/user/profile', authenticateToken, (req, res) => {
+    const userId = req.user.id; // Extract user ID from the token
+    const { name, email, contact_info, qualification, age, gender } = req.body;
+
+    // Validate the inputs
+    if (!name || !email || !contact_info) {
+        return res.status(400).send({ message: 'Name, email, and contact info are required.' });
+    }
+
+    // Update the user profile in the database
+    db.run(
+        `UPDATE users 
+         SET name = ?, email = ?, contact_info = ?, qualification = ?, age = ?, gender = ?
+         WHERE id = ?`,
+        [name, email, contact_info, qualification, age, gender, userId],
+        function (err) {
+            if (err) {
+                console.error('Error updating user profile:', err.message);
+                return res.status(500).send({ message: 'Error updating user profile.' });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).send({ message: 'User not found.' });
+            }
+
+            res.status(200).send({ message: 'Profile updated successfully.' });
+        }
+    );
+});
+
 // Endpoint to fetch all organizations
 app.get('/organizations', (req, res) => {
     db.all(
@@ -328,35 +347,7 @@ const uploads = multer({
         }
     },
 });
-app.put('/user/profile', authenticateToken, (req, res) => {
-    const userId = req.user.id; // Extract user ID from the token
-    const { name, email, contact_info, qualification, age, gender } = req.body;
 
-    // Validate the inputs
-    if (!name || !email || !contact_info) {
-        return res.status(400).send({ message: 'Name, email, and contact info are required.' });
-    }
-
-    // Update the user profile in the database
-    db.run(
-        `UPDATE users 
-         SET name = ?, email = ?, contact_info = ?, qualification = ?, age = ?, gender = ?
-         WHERE id = ?`,
-        [name, email, contact_info, qualification, age, gender, userId],
-        function (err) {
-            if (err) {
-                console.error('Error updating user profile:', err.message);
-                return res.status(500).send({ message: 'Error updating user profile.' });
-            }
-
-            if (this.changes === 0) {
-                return res.status(404).send({ message: 'User not found.' });
-            }
-
-            res.status(200).send({ message: 'Profile updated successfully.' });
-        }
-    );
-});
 // Handle volunteer application with document upload
 app.post('/positions/:id/apply', authenticateToken, uploads.single('documents'), (req, res) => {
     const positionId = req.params.id; // Extract position ID from URL
@@ -434,6 +425,37 @@ app.post('/positions/:id/apply', authenticateToken, uploads.single('documents'),
     });
 });
 
+app.get('/volunteer-positions', authenticateToken, (req, res) => {
+    db.all(
+        `SELECT 
+            vp.id AS position_id, 
+            vp.title AS position_title, 
+            vp.description AS position_description, 
+            vp.requirements, 
+            vp.location AS position_location, 
+            vp.deadline, 
+            o.id AS organization_id, 
+            o.name AS organization_name, 
+            o.contact_info AS organization_contact, 
+            o.location AS organization_location, 
+            o.description AS organization_description
+         FROM 
+            volunteer_positions vp
+         JOIN 
+            organizations o ON vp.organization_id = o.id
+         ORDER BY 
+            vp.deadline ASC`, // Optional: Order positions by deadline
+        [],
+        (err, rows) => {
+            if (err) {
+                console.error('Error fetching volunteer positions:', err.message);
+                return res.status(500).send({ message: 'Error fetching volunteer positions' });
+            }
+            console.log('Volunteer Positions:', rows); // Debugging
+            res.status(200).send(rows);
+        }
+    );
+});
 
 
 
@@ -545,37 +567,7 @@ app.get('/notifications', authenticateToken, (req, res) => {
         }
     );
 });
-app.get('/volunteer-positions', authenticateToken, (req, res) => {
-    db.all(
-        `SELECT 
-            vp.id AS position_id, 
-            vp.title AS position_title, 
-            vp.description AS position_description, 
-            vp.requirements, 
-            vp.location AS position_location, 
-            vp.deadline, 
-            o.id AS organization_id, 
-            o.name AS organization_name, 
-            o.contact_info AS organization_contact, 
-            o.location AS organization_location, 
-            o.description AS organization_description
-         FROM 
-            volunteer_positions vp
-         JOIN 
-            organizations o ON vp.organization_id = o.id
-         ORDER BY 
-            vp.deadline ASC`, // Optional: Order positions by deadline
-        [],
-        (err, rows) => {
-            if (err) {
-                console.error('Error fetching volunteer positions:', err.message);
-                return res.status(500).send({ message: 'Error fetching volunteer positions' });
-            }
-            console.log('Volunteer Positions:', rows); // Debugging
-            res.status(200).send(rows);
-        }
-    );
-});
+
 // Endpoint to delete user account
 app.delete('/user/delete-account', authenticateToken, (req, res) => {
     const userId = req.user.id; // Assuming user ID is available from the token payload
@@ -599,6 +591,8 @@ app.delete('/user/delete-account', authenticateToken, (req, res) => {
         }
     );
 });
+module.exports = app;
+
 // Start Server
 app.listen(3000, () => {
     console.log('Server running at http://localhost:3000');
